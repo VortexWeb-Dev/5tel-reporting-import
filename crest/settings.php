@@ -3,7 +3,7 @@
 //define('C_REST_CLIENT_SECRET','SakeVG5mbRdcQet45UUrt6q72AMTo7fkwXSO7Y5LYFYNCRsA6f');//Application key
 // or
 define('C_REST_WEB_HOOK_URL','https://5tel.bitrix24.uk/rest/13/80g52mjxgr49pwma/');//url on creat Webhook
-define('STATEMENTS_ENTITY_TYPE_ID', 1046);
+define('STATEMENTS_ENTITY_TYPE_ID', 1052);
 
 //define('C_REST_CURRENT_ENCODING','windows-1251');
 //define('C_REST_IGNORE_SSL',true);//turn off validate ssl by curl
