@@ -6,6 +6,13 @@ require 'vendor/autoload.php';
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
+$agent_commission = [
+    // 17 => 0, // Anna Lisowska,
+    21 => 30, // Peter Walpole
+    29 => 70, // Ace Card
+    31 => 30, // Sayanthini Vijayrahavan
+];
+
 if (isset($_FILES['xlsxFile']) && $_FILES['xlsxFile']['error'] === UPLOAD_ERR_OK) {
     $fileTmpPath = $_FILES['xlsxFile']['tmp_name'];
 
@@ -56,18 +63,24 @@ if (isset($_FILES['xlsxFile']) && $_FILES['xlsxFile']['error'] === UPLOAD_ERR_OK
 
     foreach ($dataRows as $row) {
         $fields = [];
+
         foreach ($columnIndexes as $crmField => $index) {
             $fields[$crmField] = htmlspecialchars(trim($row[$index]));
         }
-
-        $earnings = (float)$fields['ufCrm9EarningsLocalCurrency']; // Earnings- Local Currency
-        $revenue_share = (float)$fields['ufCrm9RevenueSharePercentage']; // Revenue Share %
-        $fields['ufCrm9CommissionAmount'] = ($revenue_share / 100) * $earnings; // Commission Amount
 
         $mid = $fields['ufCrm9Mid'];
 
         $company_res = CRest::call('crm.company.list', ['filter' => ['UF_CRM_1719996948788' => $mid]]);
         $company = $company_res['result'][0] ?? null;
+        $agent_id = $company['ASSIGNED_BY_ID'];
+
+        $commission_percentage = $agent_commission[$agent_id] ?? 0; // Commission Percentage
+        $earnings = (float)$fields['ufCrm9EarningsLocalCurrency']; // Earnings- Local Currency
+
+        $fields['ufCrm9CommissionAmount'] = ($commission_percentage / 100) * $earnings; // Commission Amount
+
+        $fields['ufCrm9Month'] = 1385; // For November
+
 
         if ($company) {
             $fields['assignedById'] = $company['ASSIGNED_BY_ID'];
