@@ -1,3 +1,7 @@
+<?php
+$import_type = isset($_GET['type']) ? $_GET['type'] : '';
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -44,7 +48,7 @@
     <?php endif; ?>
 
     <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md relative">
-        <h2 class="text-2xl font-bold text-gray-700 mb-6 text-center">Reporting SPA Import</h2>
+        <h2 class="text-2xl font-bold text-gray-700 mb-6 text-center"><?= "import into $import_type table" ?></h2>
 
         <!-- Loading Spinner -->
         <div id="loading" class="hidden absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
@@ -53,7 +57,7 @@
         </div>
 
         <!-- Form -->
-        <form id="csvForm" action="action-xlsx.php" method="post" enctype="multipart/form-data">
+        <form id="csvForm" action=<?= "action-xlsx-$import_type.php" ?> method="post" enctype="multipart/form-data">
             <div class="mb-4">
                 <label for="xlsxFile" class="block text-gray-600 font-medium mb-2">Choose XLSX File</label>
                 <input type="file" name="xlsxFile" id="xlsxFile" accept=".xlsx" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600" required>

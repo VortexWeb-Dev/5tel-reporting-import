@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "migration": "php runMigrations.php"
+  },
   "require": {
     "phpoffice/phpspreadsheet": "^3.3"
   }
