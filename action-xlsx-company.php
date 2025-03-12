@@ -25,15 +25,16 @@ if (isset($_FILES['xlsxFile']) && $_FILES['xlsxFile']['error'] === UPLOAD_ERR_OK
 
     $config = require(__DIR__ . '/config/config.php');
     $db = new Database($config['db']);
+    $pdo = $db->getConnection();
     $logger = new Logger();
 
     foreach ($dataRows as $index => $row) {
-        $company = new Company($db, $logger);
-        $name = $row[1];
-        $mid = $row[7];
-        $responsiblePerson = $row[4];
+        $company = new Company($pdo, $logger);
+        $name = $row[0];
+        $responsiblePerson = $row[1];
+        $mid = $row[2];
 
-        $user = new User($db, $logger);
+        $user = new User($pdo, $logger);
         $responsiblePersonBitrixId = $user->getUserBitrixId($responsiblePerson);
 
         $args = [$name, $mid, $responsiblePerson, $responsiblePersonBitrixId];
