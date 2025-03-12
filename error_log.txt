@@ -1,0 +1,22 @@
+[2025-03-12 07:35:12] ERROR: Exception in user creation: SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+[2025-03-12 07:35:12] ERROR: Error inserting row 1: Anna Lisowska, 3
+[2025-03-12 07:35:12] ERROR: Exception in user creation: SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+[2025-03-12 07:35:12] ERROR: Error inserting row 2: Peter Walpole, 4
+[2025-03-12 07:35:12] ERROR: Exception in user creation: SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+[2025-03-12 07:35:12] ERROR: Error inserting row 3: Ace Card, 5
+[2025-03-12 07:35:12] ERROR: Exception in user creation: SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+[2025-03-12 07:35:12] ERROR: Error inserting row 4: Sayanthini Vijayrahavan, 6
+[2025-03-12 07:35:13] ERROR: Exception in user creation: SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+[2025-03-12 07:35:13] ERROR: Error inserting row 5: Jason Ryan, 7
+[2025-03-12 07:35:13] ERROR: Exception in user creation: SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+[2025-03-12 07:35:13] ERROR: Error inserting row 6: Joseph Bolt, 8
+[2025-03-12 07:35:13] ERROR: Exception in user creation: SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+[2025-03-12 07:35:13] ERROR: Error inserting row 7: Imran Bashir, 9
+[2025-03-12 07:35:13] ERROR: Exception in user creation: SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+[2025-03-12 07:35:13] ERROR: Error inserting row 8: Lee Hasnath, 10
+[2025-03-12 07:35:13] ERROR: Exception in user creation: SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+[2025-03-12 07:35:13] ERROR: Error inserting row 9: Calvin DeCordova, 15
+[2025-03-12 07:35:13] ERROR: Exception in user creation: SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+[2025-03-12 07:35:14] ERROR: Error inserting row 10: Sultan Jadevji, 16
+[2025-03-12 07:35:14] ERROR: Exception in user creation: SQLSTATE[25P02]: In failed sql transaction: 7 ERROR:  current transaction is aborted, commands ignored until end of transaction block
+[2025-03-12 07:35:14] ERROR: Error inserting row 11: Jamal Simms, 17
