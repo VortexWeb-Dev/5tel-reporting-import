@@ -2,10 +2,10 @@
 
 class Company
 {
-    private $db;
+    private PDO $db;
     private $logger;
 
-    public function __construct($db, $logger)
+    public function __construct(PDO $db, $logger)
     {
         $this->db = $db;
         $this->logger = $logger;
@@ -14,69 +14,35 @@ class Company
     // CREATE operation
     public function create($name, $mid, $responsiblePerson, $responsiblePersonBitrixId)
     {
-        $sql = "INSERT INTO company (name, mid, responsible_person, responsible_person_bitrix_id) VALUES ($1, $2, $3, $4)";
+        $sql = "INSERT INTO company (name, mid, responsible_person, responsible_person_bitrix_id) VALUES (:name, :mid, :responsiblePerson, :responsiblePersonBitrixId)";
 
         try {
-            $result = pg_query_params($this->db->getConnection(), $sql, [$name, $mid, $responsiblePerson, $responsiblePersonBitrixId]);
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':name' => $name,
+                ':mid' => $mid,
+                ':responsiblePerson' => $responsiblePerson,
+                ':responsiblePersonBitrixId' => $responsiblePersonBitrixId
+            ]);
 
-            if ($result) {
-                $this->logger->logInfo("New company created with name: {$name}, MID: {$mid}");
-                return pg_last_oid($result);
-            }
-
-            $this->logger->logError("Failed to create company. SQL Error: " . pg_last_error($this->db->getConnection()));
-            return false;
-        } catch (Exception $e) {
+            $this->logger->logInfo("New company created with name: {$name}, MID: {$mid}");
+            return $this->db->lastInsertId();
+        } catch (PDOException $e) {
             $this->logger->logError("Exception in company creation: " . $e->getMessage());
             return false;
-        }
-    }
-
-    function getResponsiblePerson($mid)
-    {
-        $sql = "SELECT responsible_person_bitrix_id, responsible_person FROM company WHERE mid = $1";
-        try {
-            $result = pg_query_params($this->db->getConnection(), $sql, [$mid]);
-            if ($result) {
-                $company = pg_fetch_assoc($result);
-                if ($company) {
-                    $this->logger->logInfo("Company fetched with MID: {$mid}");
-                    return $company;
-                } else {
-                    $this->logger->logWarning("No company found with MID: {$mid}");
-                    return null;
-                }
-            }
-        } catch (Exception $e) {
-            $this->logger->logError("Exception in company retrieval: " . $e->getMessage());
-            return false;
-        } finally {
-            pg_free_result($result);
         }
     }
 
     // READ operation by ID
     public function getById($id)
     {
-        $sql = "SELECT id, name, mid, responsible_person, responsible_person_bitrix_id FROM company WHERE id = $1";
-
+        $sql = "SELECT * FROM company WHERE id = :id";
         try {
-            $result = pg_query_params($this->db->getConnection(), $sql, [$id]);
-
-            if ($result) {
-                $company = pg_fetch_assoc($result);
-                if ($company) {
-                    $this->logger->logInfo("Company fetched with ID: {$id}");
-                    return $company;
-                } else {
-                    $this->logger->logWarning("No company found with ID: {$id}");
-                    return null;
-                }
-            }
-
-            $this->logger->logError("Failed to fetch company. SQL Error: " . pg_last_error($this->db->getConnection()));
-            return null;
-        } catch (Exception $e) {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':id' => $id]);
+            $company = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $company ?: null;
+        } catch (PDOException $e) {
             $this->logger->logError("Exception in company retrieval: " . $e->getMessage());
             return null;
         }
@@ -85,78 +51,33 @@ class Company
     // READ operation by MID
     public function getByMid($mid)
     {
-        $sql = "SELECT id, name, mid, responsible_person, responsible_person_bitrix_id FROM company WHERE mid = $1";
-
+        $sql = "SELECT * FROM company WHERE mid = :mid";
         try {
-            $result = pg_query_params($this->db->getConnection(), $sql, [$mid]);
-
-            if ($result) {
-                $company = pg_fetch_assoc($result);
-                if ($company) {
-                    $this->logger->logInfo("Company fetched with MID: {$mid}");
-                    return $company;
-                } else {
-                    $this->logger->logWarning("No company found with MID: {$mid}");
-                    return null;
-                }
-            }
-
-            $this->logger->logError("Failed to fetch company by MID. SQL Error: " . pg_last_error($this->db->getConnection()));
-            return null;
-        } catch (Exception $e) {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':mid' => $mid]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (PDOException $e) {
             $this->logger->logError("Exception in company retrieval by MID: " . $e->getMessage());
             return null;
         }
     }
 
     // UPDATE operation
-    public function update($id, $name = null, $mid = null, $responsiblePerson = null, $responsiblePersonBitrixId = null)
+    public function update($id, $data)
     {
-        // Dynamically build update query
         $updateFields = [];
-        $params = [];
-        $paramCount = 1;
+        $params = [':id' => $id];
 
-        if ($name !== null) {
-            $updateFields[] = "name = $" . $paramCount;
-            $params[] = $name;
-            $paramCount++;
+        foreach ($data as $key => $value) {
+            $updateFields[] = "$key = :$key";
+            $params[":$key"] = $value;
         }
 
-        if ($mid !== null) {
-            $updateFields[] = "mid = $" . $paramCount;
-            $params[] = $mid;
-            $paramCount++;
-        }
-
-        if ($responsiblePerson !== null) {
-            $updateFields[] = "responsible_person = $" . $paramCount;
-            $params[] = $responsiblePerson;
-            $paramCount++;
-        }
-
-        if ($responsiblePersonBitrixId !== null) {
-            $updateFields[] = "responsible_person_bitrix_id = $" . $paramCount;
-            $params[] = $responsiblePersonBitrixId;
-            $paramCount++;
-        }
-
-        // Add ID as last parameter
-        $params[] = $id;
-
-        $sql = "UPDATE company SET " . implode(", ", $updateFields) . " WHERE id = $" . $paramCount;
-
+        $sql = "UPDATE company SET " . implode(", ", $updateFields) . " WHERE id = :id";
         try {
-            $result = pg_query_params($this->db->getConnection(), $sql, $params);
-
-            if ($result) {
-                $this->logger->logInfo("Company updated with ID: {$id}");
-                return true;
-            }
-
-            $this->logger->logError("Failed to update company with ID: {$id}. SQL Error: " . pg_last_error($this->db->getConnection()));
-            return false;
-        } catch (Exception $e) {
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute($params);
+        } catch (PDOException $e) {
             $this->logger->logError("Exception in company update: " . $e->getMessage());
             return false;
         }
@@ -165,19 +86,11 @@ class Company
     // DELETE operation
     public function delete($id)
     {
-        $sql = "DELETE FROM company WHERE id = $1";
-
+        $sql = "DELETE FROM company WHERE id = :id";
         try {
-            $result = pg_query_params($this->db->getConnection(), $sql, [$id]);
-
-            if ($result) {
-                $this->logger->logInfo("Company deleted with ID: {$id}");
-                return true;
-            }
-
-            $this->logger->logError("Failed to delete company with ID: {$id}. SQL Error: " . pg_last_error($this->db->getConnection()));
-            return false;
-        } catch (Exception $e) {
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([':id' => $id]);
+        } catch (PDOException $e) {
             $this->logger->logError("Exception in company deletion: " . $e->getMessage());
             return false;
         }
@@ -186,25 +99,30 @@ class Company
     // Get all companies
     public function getAll($limit = 1000, $offset = 0)
     {
-        $sql = "SELECT id, name, mid, responsible_person, responsible_person_bitrix_id FROM company LIMIT $1 OFFSET $2";
-
+        $sql = "SELECT * FROM company LIMIT :limit OFFSET :offset";
         try {
-            $result = pg_query_params($this->db->getConnection(), $sql, [$limit, $offset]);
-
-            if ($result) {
-                $companies = [];
-                while ($row = pg_fetch_assoc($result)) {
-                    $companies[] = $row;
-                }
-                $this->logger->logInfo("Fetched companies. Limit: {$limit}, Offset: {$offset}");
-                return $companies;
-            }
-
-            $this->logger->logError("Failed to fetch companies. SQL Error: " . pg_last_error($this->db->getConnection()));
-            return [];
-        } catch (Exception $e) {
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindValue(':limit', (int) $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', (int) $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
             $this->logger->logError("Exception in fetching companies: " . $e->getMessage());
             return [];
+        }
+    }
+
+    // Get responsible person by MID
+    public function getResponsiblePerson($mid)
+    {
+        $sql = "SELECT responsible_person, responsible_person_bitrix_id FROM company WHERE mid = :mid";
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':mid' => $mid]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (PDOException $e) {
+            $this->logger->logError("Exception in fetching responsible person: " . $e->getMessage());
+            return null;
         }
     }
 }

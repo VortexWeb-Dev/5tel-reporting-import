@@ -38,11 +38,12 @@ if (isset($_FILES['xlsxFile']) && $_FILES['xlsxFile']['error'] === UPLOAD_ERR_OK
 
     $config = require(__DIR__ . '/config/config.php');
     $db = new Database($config['db']);
+    $pdo = $db->getConnection();
     $logger = new Logger();
 
     foreach ($dataRows as $index => $row) {
         try {
-            $transactionDetail = new Transaction($db, $logger);
+            $transactionDetail = new Transaction($pdo, $logger);
 
             $args = [
                 'statement_month' => $row[0],
@@ -76,7 +77,7 @@ if (isset($_FILES['xlsxFile']) && $_FILES['xlsxFile']['error'] === UPLOAD_ERR_OK
             ];
 
             // get the responsible person
-            $company = new Company($db, $logger);
+            $company = new Company($pdo, $logger);
             $responsiblePersonDetails = $company->getResponsiblePerson($args['mid']);
 
             if ($responsiblePersonDetails) {
