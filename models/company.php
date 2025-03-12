@@ -111,4 +111,18 @@ class Company
             return [];
         }
     }
+
+    // Get responsible person by MID
+    public function getResponsiblePerson($mid)
+    {
+        $sql = "SELECT responsible_person, responsible_person_bitrix_id FROM company WHERE mid = :mid";
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':mid' => $mid]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (PDOException $e) {
+            $this->logger->logError("Exception in fetching responsible person: " . $e->getMessage());
+            return null;
+        }
+    }
 }
