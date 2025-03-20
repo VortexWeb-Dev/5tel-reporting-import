@@ -1,8 +1,7 @@
 <?php
 require_once(__DIR__ . '/crest/crest.php');
 require_once(__DIR__ . '/crest/settings.php');
-require 'vendor/autoload.php';
-
+require_once(__DIR__ . '/vendor/autoload.php');
 require_once(__DIR__ . '/db/db.php');
 require_once(__DIR__ . '/config/config.php');
 require_once(__DIR__ . '/models/company.php');
@@ -13,97 +12,142 @@ require_once(__DIR__ . '/utils/logger.php');
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
-$agent_commission = [
-    // 17 => 0, // Anna Lisowska,
-    21 => 30, // Peter Walpole
-    29 => 70, // Ace Card
-    31 => 30, // Sayanthini Vijayrahavan
-];
+function getAgentCommission(int $agentId): float
+{
+    $agentCommission = [
+        3 => 0.0,  // Anna Lisowska
+        4 => 30.0, // Peter Walpole
+        5 => 70.0, // Ace Card
+        6 => 30.0, // Sayanthini Vijayrahavan
+    ];
+    return $agentCommission[$agentId] ?? 0.0;
+}
 
-if (isset($_FILES['xlsxFile']) && $_FILES['xlsxFile']['error'] === UPLOAD_ERR_OK) {
-    $fileTmpPath = $_FILES['xlsxFile']['tmp_name'];
+function processFile(array $file): void
+{
+    if (!isset($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK) {
+        redirectTo('import-xlsx.php', ['error' => 1]);
+    }
 
-    $spreadsheet = IOFactory::load($fileTmpPath);
+    $spreadsheet = IOFactory::load($file['tmp_name']);
     $worksheet = $spreadsheet->getActiveSheet();
-
-    $rows = $worksheet->toArray();
-
-    $header = $rows[0];
-    $dataRows = array_slice($rows, 1);
-
-    // echo '<pre>';
-    // print_r('rows:');
-    // print_r($dataRows);
-    // echo '</pre>';
+    $dataRows = array_slice($worksheet->toArray(), 1); // Remove headers
 
     $config = require(__DIR__ . '/config/config.php');
     $db = new Database($config['db']);
     $pdo = $db->getConnection();
     $logger = new Logger();
+    $company = new Company($pdo, $logger);
+    $transactionDetail = new Transaction($pdo, $logger);
 
     foreach ($dataRows as $index => $row) {
         try {
-            $transactionDetail = new Transaction($pdo, $logger);
-
-            $args = [
-                'statement_month' => $row[0],
-                'mid' => $row[1],
-                'dba' => $row[2],
-                'status' => $row[3],
-                'local_currency' => $row[4],
-                'entity' => $row[5],
-                'sales_rep_code' => $row[6],
-                'open_date' => $row[7] === '' ? null : $row[7],
-                'tier_code' => $row[8],
-                'card_plan' => $row[9],
-                'first_batch_date' => $row[10] === '' ? null : $row[10],
-                'base_msc_rate' => $row[11] === null ? '0' : $row[11],
-                'base_msc_pi' => $row[12] === null ? '0' : $row[12],
-                'ex_rate' => $row[13] === null ? '0' : $row[13],
-                'ex_pi' => $row[14] === null ? '0' : $row[14],
-                'int_lc' => $row[15] === null ? '0' : $row[15],
-                'asmt_lc' => $row[16] === null ? '0' : $row[16],
-                'base_msc_amt' => $row[17] === null ? '0' : str_replace(',', '', $row[17]),
-                'exception_msc_amt' => $row[18] === null ? '0' : str_replace(',', '', $row[18]),
-                'msc_amt' => $row[19] === null ? '0' : str_replace(',', '', $row[19]),
-                'sales_volume' => $row[20] === null ? '0' : str_replace(',', '', $row[20]),
-                'sales_trxn' => $row[21] === null ? '0' : str_replace(',', '', $row[21]),
-                'plan' => $row[22],
-                'primary_rate' => $row[23] === null ? '0' : $row[23],
-                'secondary_rate' => $row[24] === null ? '0' : $row[24],
-                'residual_per_item' => $row[25] === null ? '0' : $row[25],
-                'revenue_share' => $row[26] === null ? '0' : $row[26],
-                'earnings_local_currency' => $row[27] === null ? '0' : str_replace(',', '', $row[27]),
-            ];
-
-            // get the responsible person
-            $company = new Company($pdo, $logger);
-            $responsiblePersonDetails = $company->getResponsiblePerson($args['mid']);
-
-            if ($responsiblePersonDetails) {
-                $args['responsible_person'] = $responsiblePersonDetails['responsible_person'];
-                $args['responsible_person_bitrix_id'] = $responsiblePersonDetails['responsible_person_bitrix_id'];
-            }
-            // calculate commission
-            $commission_percentage = isset($args['responsible_person_bitrix_id']) ? $agent_commission[$args['responsible_person_bitrix_id']] ?? 0 : 0; // Commission Percentage
-            $earnings = (float)$args['earnings_local_currency']; // Earnings- Local Currency
-
-            $args['commission'] = ($commission_percentage / 100) * $earnings; // Commission Amount
-
-            // echo '<pre>';
-            // var_dump($args['first_batch_date']);
-            // echo '</pre>';
-
-            $transactionId = $transactionDetail->create($args);
+            processRow($row, $pdo, $logger, $company, $transactionDetail);
         } catch (Exception $e) {
             $logger->logError("Exception processing row {$index}: " . $e->getMessage());
-            continue;
         }
     }
 
-    header('Location: import-xlsx.php?success=1');
-    exit;
-} else {
-    header('Location: import-xlsx.php?error=1');
+    redirectTo('import-xlsx.php', ['success' => 1]);
+}
+
+function processRow(array $row, $pdo, Logger $logger, Company $company, Transaction $transactionDetail): void
+{
+    [
+        $statementMonth,
+        $mid,
+        $dba,
+        $status,
+        $localCurrency,
+        $entity,
+        $salesRepCode,
+        $openDate,
+        $tierCode,
+        $cardPlan,
+        $firstBatchDate,
+        $baseMscRate,
+        $baseMscPi,
+        $exRate,
+        $exPi,
+        $intLc,
+        $asmtLc,
+        $baseMscAmt,
+        $exceptionMscAmt,
+        $mscAmt,
+        $salesVolume,
+        $salesTrxn,
+        $plan,
+        $primaryRate,
+        $secondaryRate,
+        $residualPerItem,
+        $revenueShare,
+        $earningsLocalCurrency
+    ] = array_pad($row, 28, null);
+
+    if (empty($statementMonth) && empty($mid) && empty($dba)) {
+        return;
+    }
+
+    $args = [
+        'statement_month'       => $statementMonth,
+        'mid'                   => $mid,
+        'dba'                   => $dba,
+        'status'                => $status,
+        'local_currency'        => $localCurrency,
+        'entity'                => $entity,
+        'sales_rep_code'        => $salesRepCode,
+        'open_date'             => empty($openDate) ? null : $openDate,
+        'tier_code'             => $tierCode,
+        'card_plan'             => $cardPlan,
+        'first_batch_date'      => empty($firstBatchDate) ? null : $firstBatchDate,
+        'base_msc_rate'         => $baseMscRate ?? '0',
+        'base_msc_pi'           => $baseMscPi ?? '0',
+        'ex_rate'               => $exRate ?? '0',
+        'ex_pi'                 => $exPi ?? '0',
+        'int_lc'                => $intLc ?? '0',
+        'asmt_lc'               => $asmtLc ?? '0',
+        'base_msc_amt'          => formatNumber($baseMscAmt),
+        'exception_msc_amt'     => formatNumber($exceptionMscAmt),
+        'msc_amt'               => formatNumber($mscAmt),
+        'sales_volume'          => formatNumber($salesVolume),
+        'sales_trxn'            => formatNumber($salesTrxn),
+        'plan'                  => $plan,
+        'primary_rate'          => $primaryRate ?? '0',
+        'secondary_rate'        => $secondaryRate ?? '0',
+        'residual_per_item'     => $residualPerItem ?? '0',
+        'revenue_share'         => $revenueShare ?? '0',
+        'earnings_local_currency' => formatNumber($earningsLocalCurrency),
+    ];
+
+    // Get the responsible person
+    $responsiblePersonDetails = $company->getResponsiblePerson($mid);
+    if ($responsiblePersonDetails) {
+        $args['responsible_person'] = $responsiblePersonDetails['responsible_person'];
+        $args['responsible_person_bitrix_id'] = $responsiblePersonDetails['responsible_person_bitrix_id'];
+    }
+
+    // Calculate commission
+    $commissionPercentage = isset($args['responsible_person_bitrix_id'])
+        ? getAgentCommission((int) trim($args['responsible_person_bitrix_id']))
+        : 0;
+
+    $earnings = (float) $args['earnings_local_currency'];
+    $args['commission'] = ($commissionPercentage / 100) * $earnings;
+
+    $transactionDetail->create($args);
+}
+
+function formatNumber($value): string
+{
+    return isset($value) ? str_replace(',', '', $value) : '0';
+}
+
+function redirectTo(string $url, array $params = []): void
+{
+    $queryString = !empty($params) ? '?' . http_build_query($params) : '';
+    header("Location: {$url}{$queryString}");
     exit;
 }
+
+processFile($_FILES['xlsxFile']);
+exit;
