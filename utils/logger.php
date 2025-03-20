@@ -5,7 +5,7 @@ class Logger {
     private $logLevel;
 
     // Constructor to initialize log file path and log level
-    public function __construct($logFile = 'error_log.txt', $logLevel = 'error') {
+    public function __construct($logFile = 'logs/error.log', $logLevel = 'error') {
         $this->logFile = $logFile;
         $this->logLevel = $logLevel;
     }
